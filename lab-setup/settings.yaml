@@ -1,0 +1,6 @@
+box_name: "bento/ubuntu-24.04"
+vm:
+  name: "Docker"
+  ip: "192.168.201.10"
+  memory: "2048"
+  cpus: 2

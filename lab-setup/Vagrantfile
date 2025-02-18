@@ -1,1 +1,24 @@
+require 'yaml'
+
+# Load settings from settings.yaml file
+settings = YAML.load_file(File.join(File.dirname(__FILE__), 'settings.yaml'))
+
+Vagrant.configure("2") do |config|
+  config.vm.box = settings['box_name']  # Use the box from settings.yaml
+  config.vm.box_check_update = true
+
+  # Define the VM with the name from settings.yaml
+  config.vm.define settings['vm']['name'] do |vm|
+    vm.vm.hostname = settings['vm']['name']  # Set hostname inside the VM
+    vm.vm.network "private_network", ip: settings['vm']['ip']
+    vm.vm.synced_folder ".", "/vagrant"
+
+    # VirtualBox provider configuration
+    vm.vm.provider "virtualbox" do |vb|
+      vb.memory = settings['vm']['memory']
+      vb.cpus = settings['vm']['cpus']
+      vb.gui = false
+    end
+  end
+end
 

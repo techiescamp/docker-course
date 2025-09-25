@@ -1,0 +1,72 @@
+name: Build & Push Infra Image
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  IMAGE: techiescamp/infra-image
+  DOCKERFILE: ./Dockerfile
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Lint Dockerfile (hadolint)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ env.DOCKERFILE }}
+          failure-threshold: error
+
+      - name: Build (no push) for PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/amd64
+          tags: ${{ env.IMAGE }}:pr-${{ github.event.number }}
+          load: true
+          push: false
+
+      - name: Trivy scan (image)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}:pr-${{ github.event.number }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: '0'
+
+      - name: Login to Docker Hub
+        if: ${{ github.event_name == 'push' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build & Push (dev)
+        if: ${{ github.event_name == 'push' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:1.0.-${{ github.run_number }}
+            ${{ env.IMAGE }}:latest

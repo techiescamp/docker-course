@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package.json index.js env ./
 RUN npm install
 
-FROM node:alpine
+FROM node:alpine AS main
 
 COPY --from=build /app /
 EXPOSE 3000
